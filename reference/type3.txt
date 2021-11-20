@@ -1,0 +1,293 @@
+
+ 
+4.3 ERSPAN Type III 
+    
+   Type III introduces a larger and more flexible composite header to 
+   support additional fields useful for applications such as network 
+   management, intrusion detection, performance and latency analysis, 
+   etc. that require to know all the original parameters of the 
+   mirrored frame, including those not present in the original frame 
+   itself. 
+    
+   The ERSPAN Type III composite header includes a mandatory 12-octet 
+   portion followed by an optional 8-octet platform-specific sub-header 
+   as described below: 
+    
+ 
+                    ERSPAN Type III header (12 octets) 
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |  Ver  |          VLAN         | COS |BSO|T|     Session ID    | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                          Timestamp                            | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |             SGT               |P|    FT   |   Hw ID   |D|Gra|O| 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+     
+    
+                Platform Specific SubHeader (8 octets, optional) 
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1                 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |  Platf ID |               Platform Specific Info              | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                  Platform Specific Info                       | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+    
+    
+   The above composite header is immediately followed by the original 
+   mirrored frame and then by the standard 4-octet Ethernet CRC. 
+    
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                     Original Mirrored Frame                   | 
+      |                              ...                              | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                              CRC                              | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+    
+   See section 7 below for a discussion on how to encapsulate the 
+   original packet's Ethernet CRC. 
+ 
+   The various fields of the above header are described in this table: 
+    
+               Header Fields in Common with ERSPAN Type II 
+    
+   Field     Length (bits)              Definition 
+       
+   Ver              4        ERSPAN Encapsulation version. 
+                             For Type-III packets it is set to 0x2. 
+    
+   VLAN            12        VLAN of the frame monitored by an ERSPAN 
+                             source session: for ingress monitor this  
+                             will be the original source VLAN whereas 
+                             for egress monitor this will be the 
+                             destination VLAN. 
+    
+   COS              3        Class of Service of the monitored frame. 
+                             Ingress or egress CoS value is to be used 
+                             depending on the monitor type/direction. 
+    
+   T                1        This bit indicates that the frame copy 
+                             encapsulated in the ERSPAN packet has 
+                             been truncated. This occurs if the ERSPAN 
+                             encapsulated frame exceeds the configured 
+                             MTU and hence has to be truncated. 
+     
+   Session ID      10        Identification associated with each ERSPAN 
+   (ERSPAN ID)               session. Must be unique between the source 
+                             and the receiver(s). (See section below.) 
+    
+ 
+                ERSPAN Type-III Header Specific Fields 
+    
+   Field          Length              Definition 
+                  (bits) 
+       
+   BSO (Bad/Short/   2       A 2-bit value indicating the integrity of 
+   Oversized)                the payload carried by ERSPAN: 
+                             00 --> Good frame with no error, or 
+                                    unknown integrity 
+                             11 --> Payload is a Bad Frame with CRC or 
+                                    Alignment Error 
+                             01 --> Payload is a Short Frame 
+                             10 --> Payload is an Oversized Frame 
+    
+   Timestamp        32       The timestamp value needs to be derived 
+                             from a hardware clock which is  
+                             synchronized to the system-clock. This 32- 
+                             bit field should support at least a 
+ 
+                             timestamp granularity of 100 microseconds 
+                             (see the Timestamp Granularity field). 
+    
+   SGT              16       Security Group Tag of the monitored frame.  
+    
+   P                 1       This bit indicates that the ERSPAN payload  
+                             is an Ethernet protocol frame (PDU frame).  
+    
+   FT (Frame Type)   5       This field can be used to reconstruct the 
+                             original frame's encapsulation if it is 
+                             supported by the receiver. 
+                             This field may also be used by ERSPAN 
+                             engines to indicate that the mirrored  
+                             frame's L2 encapsulation header (or a 
+                             portion of it) was skipped and not 
+                             included in the ERSPAN packet.  
+                             00000 --> Ethernet frame (802.3 frame) 
+                             00010 --> IP Packet 
+                             Other values --> Reserved for future use 
+    
+   Hw (Hardware) ID  6       Unique identifier of an ERSPAN engine 
+                             within a system.  
+    
+   D (Direction)     1       Indicates whether the original frame was 
+                             SPAN'ed in ingress or in egress. 
+                             Ingress (0) or Egress (1). 
+    
+   Gra (Timestamp 
+   Granularity)      2       Time unit to be supported for time- 
+                             stamping: 
+                             00b --> granularity = 100 microseconds 
+                             01b --> granularity = 100 nanoseconds 
+                             10b --> granularity = IEEE 1588 
+                             TimeRepresentation format (see definition 
+                             below; with nanoseconds portion stored in 
+                             the Timestamp field and seconds portion 
+                             stored in the ERSPAN platform-dependent 
+                             sub-header) 
+    
+                             struct TimeRepresentation 
+                             { 
+                                UInteger32 seconds; 
+                                UInteger32 nanoseconds; 
+                             }; 
+                             11b --> user configurable time unit 
+                             (platform dependent, for example specific 
+                             to an isolated non-synchronized system 
+                             with very high local accuracy) 
+ 
+   O (Optional  
+   Sub-header)       1       The O flag indicates whether or not the  
+                             optional platform-specific sub-header is  
+                             present. If it's present, the next octet  
+                             indicates the platform specific format  
+                             used (Platf ID). The ERSPAN payload starts  
+                             after the O flag when O == 0b or after 8  
+                             octets when O == 1b. 
+    
+   Platf ID          6       Platform identifier that needs to be  
+                             recognized in order to parse the optional  
+                             platform-specific sub-header that follows. 
+    
+   Platform 
+   Specific Info    58       Platform Specific Information field. It 
+                             is a container for data that is used by 
+                             a specific set of devices only. 
+    
+    
+   Currently only the following Platform ID values are used and 
+   correspond to defined Platform Specific Info field formats: 
+    
+   Platf ID Value            Description 
+    
+   0x0                       Reserved. In some implementations it is  
+                             used as an alias to 0x07. 
+    
+    
+   0x1                       Corresponds to the following format: 
+ 
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |    0x1    |          Reserved         |     VSM Domain ID     | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                        Port_ID/Index                          | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+    
+                             When the 0x1 value is used, the timestamp 
+                             in the base header is in 100 microseconds 
+                             and the Gra field is set to '00'. 
+                             The VSM Domain ID field is the identifier 
+                             of a Cisco Nexus VSM domain. 
+ 
+    
+   0x2                       Reserved 
+ 
+   0x3                       Corresponds to the following format: 
+    
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |    0x3    |      Reserved         |       Port ID/Index       | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |       Timestamp (upper 4 octets of a UInteger64 value)        | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+    
+                             The granularities supported when the 
+                             Platform ID is set to 0x3 are 00b 
+                             (100 microseconds), 01b (100 nanoseconds) 
+                             and 11b (nanoseconds). 
+                             An unsigned 64-bit timestamp value can be 
+                             derived from combining the base ERSPAN 
+                             header's 32-bit value (lower 4 octets)  
+                             with the Platform Specific Info's 32-bit 
+                             value (upper 4 octets) and can be 
+                             interpreted based on the granularity value 
+                             set in the Gra field. 
+ 
+    
+   0x4                       Corresponds to the following format: 
+    
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |    0x4    |      Reserved         |         Reserved          | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                        Reserved                               | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+    
+                             When the 0x4 value is used, the timestamp 
+                             value in the base header represents a 
+                             UInteger32 timestamp value expressed in 
+                             100 microsecond units (Gra field = '00'). 
+ 
+    
+   0x5-0x6                   Correspond to the following format: 
+                              
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |0x5 or 0x6 |      Switch ID    |         Port ID/Index         | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                    Timestamp (seconds)                        | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+     
+                             When the 0x5 or the 0x6 value is used,  
+                             the timestamp value in the base header 
+                             represents the IEEE 1588 nanoseconds field 
+                             while the timestamp value in the Platform  
+                             Specific Info represents the IEEE 1588 
+                             seconds. The Gra field is set to '10'. 
+                             Switch ID is a value configurable in the 
+                             CLI to identify a source switch at the 
+                             receiving end. Port ID identifies the 
+                             source switch port for the SPAN'd traffic. 
+    
+    
+   0x7                       Corresponds to the following format: 
+ 
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |0x7 or 0x0 |  Reserved |     Source-Index(SI)                  | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                    Timestamp(MSB)                             | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+ 
+                             When the 0x7 value is used, an 8-octet 
+                             timestamp can be derived from the base  
+                             ERSPAN header's Timestamp field (least 
+                             significant four octets) combined with 
+                             the most significant 4 octets present in 
+                             corresponding field of the sub-header. 
+                             The "Gra" field value is 0x3(nanoseconds).   
+                             For ingress ERSPAN the lower 8 octets of  
+                             the 20-octet SI field are populated with 
+                             the port index while the upper 12 bits are  
+                             populated with an index of the group the  
+                             traffic's source port belongs to. 
+
+   0x8                       Corresponds to the following format: 
+ 
+       0                   1                   2                   3 
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |0x8        |  Drop-cause(10)   |            Reserved           | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+      |                           Inteface Handle                     | 
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+   
+    
+   0x9-0x63                  Reserved 
+
